@@ -7,9 +7,9 @@ import scala.annotation.tailrec
  *
  * @tparam A Type of the elements contained in the set
  */
-trait MySet[+A] {
+trait MySet[A] extends (A => Boolean) {
 
-  def apply[B >: A](e: B): Boolean = contains(e)
+  override def apply(e: A): Boolean = contains(e)
 
   def head: A
 
@@ -21,7 +21,7 @@ trait MySet[+A] {
    * @param e Element to check if is part of the set.
    * @return True if the element is contained; false otherwise.
    */
-  def contains[B >: A](e: B): Boolean
+  def contains(e: A): Boolean
 
   /**
    * Adds an element in to the set if its not already present.
@@ -29,7 +29,7 @@ trait MySet[+A] {
    * @param e Element to add to the set.
    * @return New set with the added element.
    */
-  def +[B >: A](e: B): MySet[B]
+  def +(e: A): MySet[A]
 
   /**
    * Union of two sets.
@@ -37,7 +37,7 @@ trait MySet[+A] {
    * @param other Other set to perfrom the union operation.
    * @return A new set with all elements from both sets.
    */
-  def ++[B >: A](other: MySet[B]): MySet[B]
+  def ++(other: MySet[A]): MySet[A]
 
   /**
    * Applies a function to each element of the original function and returns the results as a new set.
@@ -92,36 +92,27 @@ object MySet {
       }
     }
 
-    helper(Empty, elements)
+    helper(new Empty[A], elements)
   }
 }
 
 object EmptySetException extends RuntimeException("Trying to acces elements of an empty set.")
 
-case object Empty extends MySet[Nothing] {
+class Empty[A] extends MySet[A] {
   override def head: Nothing = throw EmptySetException
-
-  override def tail: MySet[Nothing] = Empty
-
+  override def tail: MySet[A] = new Empty[A]
   override def isEmpty: Boolean = true
-
-  override def contains[B >: Nothing](e: B): Boolean = false
-
-  override def +[A >: Nothing](e: A): MySet[A] = Cons(e, Empty)
-
-  override def ++[A >: Nothing](other: MySet[A]): MySet[A] = other
-
-  override def map[A](mapFunction: Nothing => A): MySet[Nothing] = Empty
-
-  override def flatMap[A](flatMapFunction: Nothing => MySet[A]): MySet[Nothing] = Empty
-
-  override def filter(predicate: Nothing => Boolean): MySet[Nothing] = Empty
-
-  override def forEach(f: Nothing => Unit): Unit = {}
+  override def contains(e: A): Boolean = false
+  override def +(e: A): MySet[A] = Cons(e, this)
+  override def ++(other: MySet[A]): MySet[A] = other
+  override def map[B](mapFunction: A => B): MySet[B] = new Empty[B]
+  override def flatMap[B](flatMapFunction: A => MySet[B]): MySet[B] = new Empty[B]
+  override def filter(predicate: A => Boolean): MySet[A] = this
+  override def forEach(f: A => Unit): Unit = {}
 }
 
-case class Cons[+A](head: A, tail: MySet[A]) extends MySet[A] {
-  override def contains[B >: A](e: B): Boolean = {
+case class Cons[A](head: A, tail: MySet[A]) extends MySet[A] {
+  override def contains(e: A): Boolean = {
     if (head == e) {
       true
     } else {
@@ -131,13 +122,13 @@ case class Cons[+A](head: A, tail: MySet[A]) extends MySet[A] {
 
   override def isEmpty: Boolean = false
 
-  override def +[B >: A](e: B): MySet[B] = {
+  override def +(e: A): MySet[A] = {
     if contains(e) then this else Cons(e, this)
   }
 
-  override def ++[B >: A](other: MySet[B]): MySet[B] = {
+  override def ++(other: MySet[A]): MySet[A] = {
     @tailrec
-    def helper(cum: MySet[B], rem: MySet[B]): MySet[B] = {
+    def helper(cum: MySet[A], rem: MySet[A]): MySet[A] = {
       if (rem.isEmpty) {
         cum
       } else {
@@ -167,7 +158,7 @@ case class Cons[+A](head: A, tail: MySet[A]) extends MySet[A] {
       }
     }
 
-    helper(cum = Empty, this)
+    helper(cum = new Empty[B], this)
   }
 
   override def flatMap[B](flatMapFunction: A => MySet[B]): MySet[B] = {
@@ -181,7 +172,7 @@ case class Cons[+A](head: A, tail: MySet[A]) extends MySet[A] {
       }
     }
 
-    helper(cum = Empty, this)
+    helper(cum = new Empty[B], this)
   }
 
   override def filter(predicate: A => Boolean): MySet[A] = {
@@ -198,7 +189,7 @@ case class Cons[+A](head: A, tail: MySet[A]) extends MySet[A] {
       }
     }
 
-    helper(cum = Empty, this)
+    helper(cum = new Empty[A], this)
   }
 
   override def forEach(func: A => Unit): Unit =
