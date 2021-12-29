@@ -7,9 +7,9 @@ import scala.annotation.tailrec
  *
  * @tparam A Type of the elements contained in the set
  */
-trait MySet[+A] extends Function1[A,Boolean] {
+trait MySet[+A] {
 
-  override def apply(e: A): Boolean = contains(e)
+  def apply[B >: A](e: B): Boolean = contains(e)
 
   def head: A
 
@@ -105,6 +105,8 @@ case object Empty extends MySet[Nothing] {
 
   override def isEmpty: Boolean = true
 
+  override def contains[B >: Nothing](e: B): Boolean = false
+
   override def +[A >: Nothing](e: A): MySet[A] = Cons(e, Empty)
 
   override def ++[A >: Nothing](other: MySet[A]): MySet[A] = other
@@ -116,8 +118,6 @@ case object Empty extends MySet[Nothing] {
   override def filter(predicate: Nothing => Boolean): MySet[Nothing] = Empty
 
   override def forEach(f: Nothing => Unit): Unit = {}
-
-  override def strRepresentation: String = ""
 }
 
 case class Cons[+A](head: A, tail: MySet[A]) extends MySet[A] {
@@ -177,11 +177,7 @@ case class Cons[+A](head: A, tail: MySet[A]) extends MySet[A] {
         cum
       } else {
         val mapped = flatMapFunction(rem.head)
-        if (cum.contains(mapped)) {
-          cum
-        } else {
-          helper(cum ++ mapped, rem.tail)
-        }
+        helper(cum ++ mapped, rem.tail)
       }
     }
 
@@ -201,6 +197,7 @@ case class Cons[+A](head: A, tail: MySet[A]) extends MySet[A] {
         }
       }
     }
+
     helper(cum = Empty, this)
   }
 
