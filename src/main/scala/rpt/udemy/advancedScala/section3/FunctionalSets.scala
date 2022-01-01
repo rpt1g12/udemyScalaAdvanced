@@ -1,5 +1,7 @@
 package rpt.udemy.advancedScala.section3
 
+import scala.util.Random
+
 object FunctionalSets extends App {
 
   val s = MySet(1,2,3,4)
@@ -46,13 +48,23 @@ object FunctionalSets extends App {
     s"(A++B)--(A&B): ${ (A++B) -- (A&B) }"
   }
 
-  // !{1,2,3,4}
+  // true
   println {
-    s"!s: ${!s}"
+    s"!s(5): ${(!s)(5)}"
   }
 
-  // s ++ !s
+  // All Integers
+  val INTS = s ++ (!s)
+  // Should print always true
   println {
-    s"s ++ !s: ${s ++ (!s)}"
+    val rgn = Random(System.nanoTime())
+    (0 to 1000).map {
+      x=>INTS(rgn.nextInt)
+    }.reduce(_ && _)
+  }
+
+  println {
+    s"!s(5): ${(!s)(5)}" + "\n" +
+    s"!s.filter(_%2)(5): ${(!s).filter(_%2==0)(5)}"
   }
 }

@@ -129,39 +129,39 @@ object MySet {
   }
 }
 
-class Complement[A](cons:MySet[A]) extends MySet[A] {
+object UnboundedCollectionError extends IllegalCallerException("Unbounded sets cannot apply this method!")
+
+class PropertyBasedSet[A](property: A => Boolean) extends MySet[A] {
 
   override def isEmpty: Boolean = false
 
-  override def contains(e: A): Boolean = !cons(e)
+  override def contains(e: A): Boolean = property(e)
 
-  override def unary_! : MySet[A] = cons
+  override def unary_! : MySet[A] = new PropertyBasedSet[A](!property(_))
 
-  override def +(e: A): MySet[A] = {
-    if cons contains e then
-      new Complement[A](cons - e)
-    else {
-      this
+  override def +(e: A): MySet[A] = new PropertyBasedSet[A](x => property(x) || x == e)
+
+  override def ++(other: MySet[A]): MySet[A] = new PropertyBasedSet[A](x => property(x) || other(x))
+
+  override def filter(predicate: A => Boolean): MySet[A] = new PropertyBasedSet[A](x => property(x) && predicate(x))
+
+  override def -(e: A): MySet[A] = filter(_ != e)
+
+  override def &(other: MySet[A]): MySet[A] = filter(other)
+
+  override def --(other: MySet[A]): MySet[A] = filter(!other)
+
+  private def politelyFail: Nothing = throw UnboundedCollectionError
+  override def map[B](mapFunction: A => B): Nothing = politelyFail
+  override def flatMap[B](flatMapFunction: A => MySet[B]): Nothing = politelyFail
+  override def forEach(f: A => Unit): Nothing = politelyFail
+
+  override def strRepr: String = {
+    property match {
+      case cons: Cons[_] => s"!$cons"
+      case _ => politelyFail
     }
   }
-
-  override def ++(other: MySet[A]): MySet[A] = new Complement[A](cons -- other)
-
-  override def map[B](mapFunction: A => B): MySet[B] = new Empty[B]
-
-  override def flatMap[B](flatMapFunction: A => MySet[B]): MySet[B] = new Empty[B]
-
-  override def filter(predicate: A => Boolean): MySet[A] = this
-
-  override def forEach(f: A => Unit): Unit = {}
-
-  override def -(e: A): MySet[A] = new Complement[A](cons+e)
-
-  override def &(other: MySet[A]): MySet[A] = other -- cons
-
-  override def --(other: MySet[A]): MySet[A] = new Complement[A](cons ++ other)
-
-  override def strRepr: String = s"!$cons"
 }
 
 class Empty[A] extends MySet[A] {
@@ -169,7 +169,7 @@ class Empty[A] extends MySet[A] {
 
   override def contains(e: A): Boolean = false
 
-  override def unary_! : MySet[A] = new Complement[A](this)
+  override def unary_! : MySet[A] = new PropertyBasedSet[A](!this(_))
 
   override def +(e: A): MySet[A] = Cons(e, this)
 
@@ -201,7 +201,7 @@ case class Cons[A](head: A, tail: MySet[A]) extends MySet[A] {
     }
   }
 
-  override def unary_! : MySet[A] = new Complement[A](this)
+  override def unary_! : MySet[A] = new PropertyBasedSet[A](!this(_))
 
   override def isEmpty: Boolean = false
 
@@ -216,7 +216,7 @@ case class Cons[A](head: A, tail: MySet[A]) extends MySet[A] {
         cum
       } else {
         rem match {
-          case complement: Complement[_] => complement ++ rem
+          case complement: PropertyBasedSet[_] => complement ++ rem
           case empty: Empty[_] => cum
           case cons: Cons[_] =>
             if (cum.contains(cons.head)) {
@@ -247,7 +247,7 @@ case class Cons[A](head: A, tail: MySet[A]) extends MySet[A] {
             }
           // This should never be reached!!
           case empty: Empty[_] => cum
-          case complement: Complement[_] => cum ++ (complement map mapFunction)
+          case complement: PropertyBasedSet[_] => cum ++ (complement map mapFunction)
         }
       }
     }
@@ -267,7 +267,7 @@ case class Cons[A](head: A, tail: MySet[A]) extends MySet[A] {
             helper(cum ++ mapped, cons.tail)
           // This should never be reached!!
           case empty: Empty[_] => cum
-          case complement: Complement[_] => cum ++ (complement flatMap flatMapFunction)
+          case complement: PropertyBasedSet[_] => cum ++ (complement flatMap flatMapFunction)
         }
       }
     }
@@ -282,7 +282,7 @@ case class Cons[A](head: A, tail: MySet[A]) extends MySet[A] {
         cum
       } else {
         rem match {
-          case complement: Complement[_] => cum ++ (complement filter predicate)
+          case complement: PropertyBasedSet[_] => cum ++ (complement filter predicate)
           case empty: Empty[_] => cum
           case cons: Cons[_] =>
             if (predicate(cons.head)) {
@@ -309,7 +309,7 @@ case class Cons[A](head: A, tail: MySet[A]) extends MySet[A] {
         rem match {
           case cons: Cons[_] => helper(cum = cum :+ cons.head.toString, cons.tail)
           case empty: Empty[_] => cum
-          case complement: Complement[_] => cum :+ complement.toString()
+          case complement: PropertyBasedSet[_] => cum :+ complement.toString()
         }
       }
     }
@@ -324,12 +324,12 @@ case class Cons[A](head: A, tail: MySet[A]) extends MySet[A] {
         rem match {
           case cons: Cons[_] =>
             if cons.head == e then {
-              tail ++ cum
+              cons.tail ++ cum
             } else {
               helper(cons.tail,cum+cons.head)
             }
           case empty: Empty[_] => rem ++ cum
-          case complement: Complement[_] => cum ++ (complement - e)
+          case complement: PropertyBasedSet[_] => cum ++ (complement - e)
         }
       } else {
         rem
@@ -339,10 +339,10 @@ case class Cons[A](head: A, tail: MySet[A]) extends MySet[A] {
   }
 
   override def & (other: MySet[A]): MySet[A] ={
-    filter(!other)
+    filter(other)
   }
 
   override def -- (other: MySet[A]): MySet[A] = {
-    filter(e => !(other contains e))
+    filter(!other)
   }
 }
