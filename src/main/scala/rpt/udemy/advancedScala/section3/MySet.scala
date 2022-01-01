@@ -9,15 +9,11 @@ import scala.util.Random
  *
  * @tparam A Type of the elements contained in the set
  */
-trait MySet[A] extends (A => Boolean) {
+sealed trait MySet[A] extends (A => Boolean) {
 
   protected val LOG: Logger = Logger.getLogger(this.getClass.getCanonicalName)
 
   override def apply(e: A): Boolean = contains(e)
-
-  def head: A
-
-  def tail: MySet[A]
 
   /**
    * Indicates if an element is contained in the set.
@@ -121,11 +117,11 @@ trait MySet[A] extends (A => Boolean) {
 object MySet {
   def apply[A](elements: A*): MySet[A] = {
     @tailrec
-    def helper(acc: MySet[A], remaining: Seq[A]): MySet[A] = {
+    def helper(cum: MySet[A], remaining: Seq[A]): MySet[A] = {
       if (remaining.isEmpty) {
-        acc
+        cum
       } else {
-        helper(acc + remaining.head, remaining.tail)
+        helper(cum + remaining.head, remaining.tail)
       }
     }
 
@@ -133,14 +129,7 @@ object MySet {
   }
 }
 
-object EmptySetException extends RuntimeException("Trying to acces elements of an empty set.")
-object InfiniteSetException extends RuntimeException("Trying to acces elements of the infinite set.")
-
 class Complement[A](cons:MySet[A]) extends MySet[A] {
-
-  override def head: Nothing = throw InfiniteSetException
-
-  override def tail: MySet[A] = this
 
   override def isEmpty: Boolean = false
 
@@ -176,10 +165,6 @@ class Complement[A](cons:MySet[A]) extends MySet[A] {
 }
 
 class Empty[A] extends MySet[A] {
-  override def head: Nothing = throw EmptySetException
-
-  override def tail: MySet[A] = new Empty[A]
-
   override def isEmpty: Boolean = true
 
   override def contains(e: A): Boolean = false
@@ -230,10 +215,15 @@ case class Cons[A](head: A, tail: MySet[A]) extends MySet[A] {
       if (rem.isEmpty) {
         cum
       } else {
-        if (cum.contains(rem.head)) {
-          cum
-        } else {
-          helper(cum + rem.head, rem.tail)
+        rem match {
+          case complement: Complement[_] => complement ++ rem
+          case empty: Empty[_] => cum
+          case cons: Cons[_] =>
+            if (cum.contains(cons.head)) {
+              cum
+            } else {
+              helper(cum + cons.head, cons.tail)
+            }
         }
       }
     }
@@ -247,11 +237,17 @@ case class Cons[A](head: A, tail: MySet[A]) extends MySet[A] {
       if (rem.isEmpty) {
         cum
       } else {
-        val mapped = mapFunction(rem.head)
-        if (cum.contains(mapped)) {
-          cum
-        } else {
-          helper(cum + mapped, rem.tail)
+        rem match {
+          case cons: Cons[_] =>
+            val mapped = mapFunction(cons.head)
+            if (cum.contains(mapped)) {
+              cum
+            } else {
+              helper(cum + mapped, cons.tail)
+            }
+          // This should never be reached!!
+          case empty: Empty[_] => cum
+          case complement: Complement[_] => cum ++ (complement map mapFunction)
         }
       }
     }
@@ -265,8 +261,14 @@ case class Cons[A](head: A, tail: MySet[A]) extends MySet[A] {
       if (rem.isEmpty) {
         cum
       } else {
-        val mapped = flatMapFunction(rem.head)
-        helper(cum ++ mapped, rem.tail)
+        rem match {
+          case cons: Cons[_] =>
+            val mapped = flatMapFunction(cons.head)
+            helper(cum ++ mapped, cons.tail)
+          // This should never be reached!!
+          case empty: Empty[_] => cum
+          case complement: Complement[_] => cum ++ (complement flatMap flatMapFunction)
+        }
       }
     }
 
@@ -279,14 +281,18 @@ case class Cons[A](head: A, tail: MySet[A]) extends MySet[A] {
       if (rem.isEmpty) {
         cum
       } else {
-        if (predicate(rem.head)) {
-          helper(cum + rem.head, rem.tail)
-        } else {
-          helper(cum, rem.tail)
+        rem match {
+          case complement: Complement[_] => cum ++ (complement filter predicate)
+          case empty: Empty[_] => cum
+          case cons: Cons[_] =>
+            if (predicate(cons.head)) {
+              helper(cum + cons.head, cons.tail)
+            } else {
+              helper(cum, cons.tail)
+            }
         }
       }
     }
-
     helper(cum = new Empty[A], this)
   }
 
@@ -297,22 +303,33 @@ case class Cons[A](head: A, tail: MySet[A]) extends MySet[A] {
 
   override def strRepr: String = {
     @tailrec
-    def helper(acc: Seq[String], rem: MySet[A]): Seq[String] = {
-      if rem.isEmpty then acc
-      else helper(acc = acc :+ rem.head.toString, rem.tail)
+    def helper(cum: Seq[String], rem: MySet[A]): Seq[String] = {
+      if rem.isEmpty then cum
+      else {
+        rem match {
+          case cons: Cons[_] => helper(cum = cum :+ cons.head.toString, cons.tail)
+          case empty: Empty[_] => cum
+          case complement: Complement[_] => cum :+ complement.toString()
+        }
+      }
     }
 
     s"{${helper(Nil, this).mkString(", ")}}"
   }
 
-  override def -(e: A): MySet[A] = {
+  override def - (e: A): MySet[A] = {
     @tailrec
-    def helper(rem: MySet[A], acc: MySet[A] = new Empty[A]) : MySet[A] = {
+    def helper(rem: MySet[A], cum: MySet[A] = new Empty[A]) : MySet[A] = {
       if rem contains e then {
-        if rem.head == e then {
-          tail ++ acc
-        } else {
-          helper(rem.tail,acc+rem.head)
+        rem match {
+          case cons: Cons[_] =>
+            if cons.head == e then {
+              tail ++ cum
+            } else {
+              helper(cons.tail,cum+cons.head)
+            }
+          case empty: Empty[_] => rem ++ cum
+          case complement: Complement[_] => cum ++ (complement - e)
         }
       } else {
         rem
@@ -321,11 +338,11 @@ case class Cons[A](head: A, tail: MySet[A]) extends MySet[A] {
     helper(this)
   }
 
-  override def &(other: MySet[A]): MySet[A] ={
+  override def & (other: MySet[A]): MySet[A] ={
     filter(!other)
   }
 
-  override def --(other: MySet[A]): MySet[A] = {
+  override def -- (other: MySet[A]): MySet[A] = {
     filter(e => !(other contains e))
   }
 }

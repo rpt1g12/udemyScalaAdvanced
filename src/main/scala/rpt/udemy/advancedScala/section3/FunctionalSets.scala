@@ -43,6 +43,16 @@ object FunctionalSets extends App {
   println {
     val A = s
     val B = MySet(3,2,4,5)
-    s"(A++B)--(A&B): ${(A++B)--(A&B)}"
+    s"(A++B)--(A&B): ${ (A++B) -- (A&B) }"
+  }
+
+  // !{1,2,3,4}
+  println {
+    s"!s: ${!s}"
+  }
+
+  // s ++ !s
+  println {
+    s"s ++ !s: ${s ++ (!s)}"
   }
 }
