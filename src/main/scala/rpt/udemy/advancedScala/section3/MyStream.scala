@@ -96,14 +96,7 @@ trait MyStream[+U] {
    * @param n Number of elements to evaluate.
    * @return A list with the first n elements of the stream.
    */
-  def takeAsList(n: Int): List[U] = {
-    @tailrec
-    def helper(rem: MyStream[U], cum: List[U] = Nil): List[U] = {
-      if rem.isEmpty then cum.reverse else helper(rem.tail, rem.head :: cum)
-    }
-
-    helper(take(n))
-  }
+  def takeAsList(n: Int): List[U] = take(n).toList
 
   /**
    * Converts the stream to a List
@@ -112,9 +105,10 @@ trait MyStream[+U] {
   final def toList: List[U] = toList(Nil)
 
   @tailrec
-  private final def toList(cum: List[U] = Nil) :List[U] = {
-    if isEmpty then cum.reverse
-    else toList(head :: cum)
+  private final def toList[V>:U](cum: List[V] = Nil) :List[V] = {
+    val newCum = head :: cum
+    if tail.isEmpty then newCum.reverse
+    else tail.toList(newCum)
   }
 }
 
