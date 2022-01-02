@@ -96,7 +96,26 @@ trait MyStream[+U] {
    * @param n Number of elements to evaluate.
    * @return A list with the first n elements of the stream.
    */
-  def takeAsList(n: Int): List[U]
+  def takeAsList(n: Int): List[U] = {
+    @tailrec
+    def helper(rem: MyStream[U], cum: List[U] = Nil): List[U] = {
+      if rem.isEmpty then cum.reverse else helper(rem.tail, rem.head :: cum)
+    }
+
+    helper(take(n))
+  }
+
+  /**
+   * Converts the stream to a List
+   * @return Stream evaluated into a List
+   */
+  final def toList: List[U] = toList(Nil)
+
+  @tailrec
+  private final def toList(cum: List[U] = Nil) :List[U] = {
+    if isEmpty then cum.reverse
+    else toList(head :: cum)
+  }
 }
 
 object MyStream {
@@ -158,14 +177,6 @@ private class LazyCons[+U](override val head: U, t: => MyStream[U]) extends MySt
     }
   }
 
-  def takeAsList(n: Int): List[U] = {
-    @tailrec
-    def helper(rem: MyStream[U], cum: List[U] = Nil): List[U] = {
-      if rem.isEmpty then cum.reverse else helper(rem.tail, rem.head :: cum)
-    }
-
-    helper(take(n))
-  }
 }
 
 object EmptyStreamException extends IllegalArgumentException("Empty stream has no elements.")
@@ -190,6 +201,4 @@ object EmptyStream extends MyStream[Nothing] {
   override def filter(predicate: Nothing => Boolean): MyStream[Nothing] = EmptyStream
 
   override def take(n: Int): MyStream[Nothing] = EmptyStream
-
-  override def takeAsList(n: Int): List[Nothing] = Nil
 }
