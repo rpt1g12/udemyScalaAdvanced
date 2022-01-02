@@ -46,7 +46,7 @@ trait MyStream[+U] {
    * @tparam V Type of the other stream to concatenate.
    * @return Concatenation of the two streams.
    */
-  def ++[V >: U](other: MyStream[V]): MyStream[V]
+  def ++[V >: U](other: => MyStream[V]): MyStream[V]
 
   /**
    * Applies a given function to all elements of the set.
@@ -141,7 +141,7 @@ private class LazyCons[+U](override val head: U, t: => MyStream[U]) extends MySt
 
   override def #::[V >: U](e: V): MyStream[V] = new LazyCons[V](e, this)
 
-  override def ++[V >: U](other: MyStream[V]): MyStream[V] = {
+  override def ++[V >: U](other: => MyStream[V]): MyStream[V] = {
     new LazyCons[V](head, tail ++ other)
   }
 
@@ -155,8 +155,7 @@ private class LazyCons[+U](override val head: U, t: => MyStream[U]) extends MySt
   def map[V](mapFunction: U => V): MyStream[V] = new LazyCons[V](mapFunction(head), tail.map(mapFunction))
 
   def flatMap[V](flatMapFunction: U => MyStream[V]): MyStream[V] = {
-    lazy val headStream = flatMapFunction(head)
-    new LazyCons[V](headStream.head, headStream.tail ++ tail.flatMap(flatMapFunction))
+    flatMapFunction(head) ++ tail.flatMap(flatMapFunction)
   }
 
   def filter(predicate: U => Boolean): MyStream[U] = {
@@ -190,7 +189,7 @@ object EmptyStream extends MyStream[Nothing] {
 
   override def #::[V >: Nothing](e: V): MyStream[V] = new LazyCons[V](e, EmptyStream)
 
-  override def ++[V >: Nothing](other: MyStream[V]): MyStream[V] = other
+  override def ++[V >: Nothing](other: => MyStream[V]): MyStream[V] = other
 
   override def forEach(func: Nothing => Unit): Unit = ()
 

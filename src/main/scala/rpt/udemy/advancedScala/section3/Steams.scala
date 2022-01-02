@@ -11,4 +11,11 @@ object Steams extends App{
       x=>MyStream.from(x)(_+1).take(2)
     ).takeAsList(10)
   }
+
+  println {
+    (-1 #:: s).head
+  }
+
+  // 10000
+  println( MyStream.from(1)(x=>x).take(10000).toList.sum )
 }
