@@ -116,10 +116,7 @@ object MyStream {
 }
 
 private class LazyCons[+U](override val head: U, t: => MyStream[U]) extends MyStream[U] {
-  override def tail: MyStream[U] = {
-    lazy val l = t
-    l
-  }
+  override lazy val tail: MyStream[U] = t
 
   override def isEmpty: Boolean = false
 
@@ -139,7 +136,8 @@ private class LazyCons[+U](override val head: U, t: => MyStream[U]) extends MySt
   def map[V](mapFunction: U => V): MyStream[V] = new LazyCons[V](mapFunction(head), tail.map(mapFunction))
 
   def flatMap[V](flatMapFunction: U => MyStream[V]): MyStream[V] = {
-    flatMapFunction(head) ++ tail.flatMap(flatMapFunction)
+    lazy val headStream = flatMapFunction(head)
+    new LazyCons[V](headStream.head, headStream.tail ++ tail.flatMap(flatMapFunction))
   }
 
   def filter(predicate: U => Boolean): MyStream[U] = {
@@ -151,19 +149,21 @@ private class LazyCons[+U](override val head: U, t: => MyStream[U]) extends MySt
   }
 
   def take(n: Int): MyStream[U] = {
-    @tailrec
-    def helper(rem: MyStream[U], it: Int = 0, cum: MyStream[U] = EmptyStream): MyStream[U] = {
-      if it == n then cum else helper(rem.tail, it + 1, cum.#::(rem.head))
+    if (n <= 0) {
+      EmptyStream
+    } else if (n == 1) {
+      new LazyCons[U](head, EmptyStream)
+    } else {
+      new LazyCons[U](head, tail.take(n - 1))
     }
-
-    helper(this)
   }
 
   def takeAsList(n: Int): List[U] = {
     @tailrec
-    def helper(rem: MyStream[U], cum: List[U]=Nil): List[U] = {
-      if rem.isEmpty then cum else helper(rem.tail, rem.head :: cum)
+    def helper(rem: MyStream[U], cum: List[U] = Nil): List[U] = {
+      if rem.isEmpty then cum.reverse else helper(rem.tail, rem.head :: cum)
     }
+
     helper(take(n))
   }
 }
