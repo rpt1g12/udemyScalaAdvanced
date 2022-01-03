@@ -23,6 +23,26 @@ object Streams extends App {
   }
 
   // Fails because there are not as many items in the filtered stream and keeps trying to find the third item.
-  s.filter(_ < 2).takeAsList(3)
+  // s.filter(_ < 2).takeAsList(3)
 
+  def fibonacci(f0: BigInt = 1, f1: => BigInt = 1): MyStream[BigInt] = {
+    new LazyCons[BigInt](f0, fibonacci(f1, f0 + f1))
+  }
+
+  println {
+    fibonacci().takeAsList(1000)
+  }
+
+  def eratosthenes(naturals: => MyStream[BigInt]=MyStream.from(BigInt(0))(_+1)): MyStream[BigInt] = {
+    val h = naturals.head
+    if (h < 2) {
+      eratosthenes(MyStream.from(BigInt(2))(_ + 1))
+    } else {
+      new LazyCons[BigInt](h, eratosthenes(naturals.filter(_ % h != 0)))
+    }
+  }
+
+  println {
+    eratosthenes().take(100).toList
+  }
 }
