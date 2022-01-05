@@ -38,5 +38,4 @@ object Monads extends App {
 
   lazyFlatMapV.get
   lazyFlatMapV2.get
-
 }
