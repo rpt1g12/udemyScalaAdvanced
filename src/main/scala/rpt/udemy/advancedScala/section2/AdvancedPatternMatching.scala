@@ -148,6 +148,7 @@ object AdvancedPatternMatching extends App {
   // 2.2 Decomposing seqs
   val varargs = numbers match {
     case List(1, _*) => "Starts with a One"
+    case init :+ 1 => "Ends with One"
   }
 
   trait MyList[+A] {
