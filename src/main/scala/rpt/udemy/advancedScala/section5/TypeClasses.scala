@@ -12,6 +12,7 @@ object TypeClasses extends App {
     override def toHTML: String = s"<div>$name $age <a href=$email/></div>"
   }
 
+
   val john = User("John", 30, "j@email.com")
 
   /*
@@ -53,8 +54,9 @@ object TypeClasses extends App {
   */
   object DateSerializer extends HTMLSerializer[java.util.Date] {
     override def serialize(x: Date): String = s"<div>${x.toString}</div>"
-  } //  2. We can define multiple serializers for same  type
+  }
 
+  //  2. We can define multiple serializers for same  type
   object PartialUserSerializer extends HTMLSerializer[User] {
     override def serialize(x: User): String = s"<div>${x.name}</div>"
   }
@@ -68,7 +70,7 @@ object TypeClasses extends App {
 
   object Equality {
     def apply[T](left: T, right:T)(implicit equalizer: Equality[T]): Boolean = equalizer.test(left,right)
-    def apply[T](instance:Equality[T]): Equality[T] = instance
+    def apply[T](implicit instance:Equality[T]): Equality[T] = instance
   }
 
   object UserNameEquality extends Equality[User]{
@@ -83,6 +85,13 @@ object TypeClasses extends App {
     def serialize[T](value:T)(implicit htmlSerializer: HTMLSerializer[T]): String = {
       htmlSerializer.serialize(value)
     }
+
+    /**
+     * Surfaces an implicit HTMLSerializer of type T
+     * @param serializer HTMLSerializer
+     * @tparam T Type of the HTMLSerializer
+     * @return Serializer in scope for type T
+     */
     def apply[T](implicit serializer:HTMLSerializer[T]): HTMLSerializer[T] = serializer
   }
 
@@ -95,12 +104,19 @@ object TypeClasses extends App {
   }
 
   println(HTMLSerializer.serialize(john))
+  println(HTMLSerializer[User].serialize(john))
   println(john.toHTML)
 
   // Exercise
   val anotherJohn = User("John", 33, "jt@system.cat")
 
-  implicit val equalizer: Equality[User] = UserNameEquality
-  println(Equality(john, anotherJohn))
+  {
+    implicit val equalizer: Equality[User] = UserNameEquality
+    println(Equality(john, anotherJohn))
+  }
 
+  object User {
+    implicit val equalizer: Equality[User] = UserNameEmailEquality
+  }
+  println(Equality[User].test(john, anotherJohn))
 }
