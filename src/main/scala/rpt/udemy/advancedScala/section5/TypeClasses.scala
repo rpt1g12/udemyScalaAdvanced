@@ -65,19 +65,19 @@ object TypeClasses extends App {
     TYPE CLASSES
   */
   trait Equality[T] {
-    def test(left: T, right:T): Boolean
+    def apply(left: T, right:T): Boolean
   }
 
   object Equality {
-    def apply[T](left: T, right:T)(implicit equalizer: Equality[T]): Boolean = equalizer.test(left,right)
+    def apply[T](left: T, right:T)(implicit equalizer: Equality[T]): Boolean = equalizer(left,right)
     def apply[T](implicit instance:Equality[T]): Equality[T] = instance
   }
 
   object UserNameEquality extends Equality[User]{
-    override def test(left: User, right: User): Boolean = left.name.equals(right.name)
+    override def apply(left: User, right: User): Boolean = left.name.equals(right.name)
   }
   object UserNameEmailEquality extends Equality[User]{
-    override def test(left: User, right: User): Boolean = left.name.equals(right.name) && left.email.equals(right.email)
+    override def apply(left: User, right: User): Boolean = left.name.equals(right.name) && left.email.equals(right.email)
   }
 
   // PART 2
@@ -108,9 +108,10 @@ object TypeClasses extends App {
   println(john.toHTML)
 
   // Exercise
-  val anotherJohn = User("John", 33, "jt@system.cat")
+  val anotherJohn = john.copy(email = "jt@system.cat")
 
   {
+    // Use UserNameEquality implicitly
     implicit val equalizer: Equality[User] = UserNameEquality
     println(Equality(john, anotherJohn))
   }
@@ -118,5 +119,5 @@ object TypeClasses extends App {
   object User {
     implicit val equalizer: Equality[User] = UserNameEmailEquality
   }
-  println(Equality[User].test(john, anotherJohn))
+  println(Equality[User](john, anotherJohn))
 }
