@@ -51,4 +51,19 @@ object HTMLSerialization extends App {
   println{
     john.toHTML(User.HTMLSerialisers.partialUserSerializer)
   }
+
+  // Context bounds
+  def htmlSugar[T : HTMLSerializer](content:T):String = s"<body>${content.toHTML}</body>"
+  def htmlSugarImplicitly[T : HTMLSerializer](content:T):String = {
+    // Surfacing serializer
+    val ser = implicitly[HTMLSerializer[T]]
+    s"<body>${content.toHTML(ser)}</body>"
+  }
+
+  // Implicitly
+  case class Permissions(mask:String)
+  implicit val defaultPerms: Permissions = Permissions("0744")
+  val surfaced = implicitly[Permissions]
+//  implicit val userSer: HTMLSerializer[User] = User.HTMLSerialisers.partialUserSerializer
+  val surfacedHtmlSer: HTMLSerializer[User] = implicitly[HTMLSerializer[User]]
 }
