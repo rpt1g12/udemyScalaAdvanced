@@ -9,4 +9,18 @@ object EqualizerPlayground extends App {
     def =!=(other:T)(implicit equalizer: Equalizer[T]):Boolean = ===(other)
   }
 
+  val john = User("John", 30, "j@email.com")
+  val anotherJohn = john.copy(email = "jt@system.cat")
+
+  println {
+    john === anotherJohn // prints false
+  }
+
+  {
+    implicit val nameEq: Equalizer[User] = User.Equalizers.nameEqualizer
+    println {
+      john === anotherJohn // prints true
+    }
+  }
+
 }

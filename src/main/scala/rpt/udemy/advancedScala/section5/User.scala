@@ -18,6 +18,10 @@ case class User(name: String, age: Int, email: String)
       val fullEqualizer:Equalizer[User] = (left:User, right:User) => {
         left.name.equals(right.name) && left.email.equals(right.email)
       }
+      val nameEqualizer:Equalizer[User] = (left:User, right:User) => {
+        left.name.equals(right.name)
+      }
     }
     implicit val defaultSerializer: HTMLSerializer[User] = HTMLSerialisers.userSerializer
+    implicit val defaultEqualizer: Equalizer[User] = Equalizers.fullEqualizer
   }
