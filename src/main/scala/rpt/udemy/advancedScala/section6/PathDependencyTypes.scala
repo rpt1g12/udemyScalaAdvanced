@@ -43,17 +43,12 @@ object PathDependencyTypes extends App {
     type Key
   }
 
-  trait Item {
-    type K
-    class Inner extends ItemLike {
-      override type Key = K
-    }
+  trait Item[K] extends ItemLike {
+    override type Key = K
   }
-  trait IntItem extends Item {
-    override type K = Int
+  trait IntItem extends Item[Int] {
   }
-  trait StringItem extends Item {
-    override type K = String
+  trait StringItem extends Item[String] {
   }
 
   /*
